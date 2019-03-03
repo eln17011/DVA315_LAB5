@@ -14,7 +14,7 @@ void initilize (int *no_of_frames, int *no_of_references, int refs[], frameType 
     
     int i;
     FILE *fp;
-    char fileName[50]="ref.txt";
+    char fileName[50]="/home/erik/CLionProjects/DVA315_LAB5/ref.txt";
     
     fp = fopen(fileName, "r");
     
