@@ -1,5 +1,11 @@
 #include<stdio.h>
 #include<stdlib.h>
+#define LRU 1
+#define FIFO 2
+#define LFU 3
+#define OPT 4
+
+int currentAlgoritm = LRU;
 
 typedef struct {
     int page;       // page stored in this memory frame
@@ -75,15 +81,33 @@ void printResultOfReference (int no_of_frames, frameType frames[], int pf_flag, 
 //----------- Finds the position in memory to evict in case of page fault and no free memory location ---------------------------------------------
 
 int findPageToEvict(frameType frames[], int n) {   // LRU eviction strategy -- This is what you are supposed to change in the lab for LFU and OPT
-    int i, minimum = frames[0].time, pos = 0;
-    
-    for(i = 1; i < n; ++i) {
-        if(frames[i].time < minimum){               // Find the page position with minimum time stamp among all frames
-            minimum = frames[i].time;
-            pos = i;
+
+    if(currentAlgoritm == LRU)
+    {
+        int i, minimum = frames[0].time, pos = 0;
+
+        for(i = 1; i < n; ++i) {
+            if(frames[i].time < minimum){               // Find the page position with minimum time stamp among all frames
+                minimum = frames[i].time;
+                pos = i;
+            }
         }
+        return pos; // Return that position
     }
-    return pos;                                     // Return that position
+    else if(currentAlgoritm == FIFO)
+    {
+
+    }
+    else if(currentAlgoritm == LFU)
+    {
+
+    }
+    else if(currentAlgoritm == OPT)
+    {
+
+    }
+
+    return (int)NULL;
 }
 
 //---- Main loops ref string, for each ref 1) check if ref is in memory, 2) if not, check if there is free frame, 3) if not, find a page to evict --
