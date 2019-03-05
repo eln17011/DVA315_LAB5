@@ -5,13 +5,16 @@
 #define LFU 3
 #define OPT 4
 
-int currentAlgoritm = LRU;
+int currentAlgoritm = FIFO;
 
 typedef struct {
+    // Add own data if needed for FIFO, OPT, LFU, Own algorithm
     int page;       // page stored in this memory frame
     int time;       // Time stamp of page stored in this memory frame
     int free;       // Indicates if frame is free or not
-                    // Add own data if needed for FIFO, OPT, LFU, Own algorithm
+    int timesUsed;  //Should increment each time the frame is used, good for LFU
+    int startTime;  //remembers when a frame was populated, used for FIFO
+
 } frameType;
 
 //---------------------- Initializes by reading stuff from file and inits all frames as free -----------------------------------------------------------
@@ -96,7 +99,15 @@ int findPageToEvict(frameType frames[], int n) {   // LRU eviction strategy -- T
     }
     else if(currentAlgoritm == FIFO)
     {
+        int i, minimum = frames[0].startTime, pos = 0;
 
+        for(i = 1; i < n; ++i) {
+            if(frames[i].startTime < minimum){               // Find the page position with minimum start time stamp among all frames
+                minimum = frames[i].startTime;
+                pos = i;
+            }
+        }
+        return pos; // Return that position
     }
     else if(currentAlgoritm == LFU)
     {
@@ -106,8 +117,11 @@ int findPageToEvict(frameType frames[], int n) {   // LRU eviction strategy -- T
     {
 
     }
+    else
+    {
+        return (int)NULL;
+    }
 
-    return (int)NULL;
 }
 
 //---- Main loops ref string, for each ref 1) check if ref is in memory, 2) if not, check if there is free frame, 3) if not, find a page to evict --
@@ -139,6 +153,7 @@ int main()
                     frames[j].page= refs[i];        // Update memory frame with referenced page
                     frames[j].time = counter;       // Update the time stamp for this frame
                     frames[j].free = 0;             // This frame is no longer free
+                    frames[j].startTime = counter;  //Increments like time, but only when a frame is populated
                     no_free_mem_flag = 1;           // Indicate that we do not need to replace since free frame was found
                     free = j;                       // Inicate that we found position j as free (reporting purposes)
                     break;
@@ -152,6 +167,7 @@ int main()
             faults++;
             frames[pos].page = refs[i];             // Update memory frame at position pos with referenced page
             frames[pos].time = counter;             // Update the time stamp for this frame
+            frames[pos].startTime = counter;        //Update the start time for this frame
         }
         printResultOfReference (no_of_frames, frames, page_fault_flag, no_free_mem_flag, pos, free, refs[i]); // Print result of referencing ref[i]
     }
