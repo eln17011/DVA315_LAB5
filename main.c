@@ -5,41 +5,42 @@
 #define LFU 3
 #define OPT 4
 
-int currentAlgoritm = LFU;
+int currentAlgoritm = FIFO;
 
 typedef struct {
+    // Add own data if needed for FIFO, OPT, LFU, Own algorithm
     int page;       // page stored in this memory frame
-    int startTime;  //time when added to the page
     int time;       // Time stamp of page stored in this memory frame
     int free;       // Indicates if frame is free or not
-    int used;       //dirty dirty variable
-    // Add own data if needed for FIFO, OPT, LFU, Own algorithm
+    int timesUsed;  //Should increment each time the frame is used, good for LFU
+    int startTime;  //remembers when a frame was populated, used for FIFO
+
 } frameType;
 
 //---------------------- Initializes by reading stuff from file and inits all frames as free -----------------------------------------------------------
 
 void initilize (int *no_of_frames, int *no_of_references, int refs[], frameType frames[]) {
-
+    
     int i;
     FILE *fp;
-    char fileName[50]="/home/mathias/CLionProjects/DVA315_LAB5/ref.txt"; //ändra denna till din filepath
-
+    char fileName[50]="/home/erik/CLionProjects/DVA315_LAB5/ref.txt"; //ändra denna till din filepath
+    
     fp = fopen(fileName, "r");
-
+    
     if(fp == NULL) {
         printf("Failed to open file %s", fileName);
         exit(-1);
     }
-
+    
     fscanf(fp,"%d", no_of_frames);                  //Get the number of frames
-
+    
     fscanf(fp,"%d", no_of_references);              //Get the number of references in the reference string
-
+    
     for(i = 0; i < *no_of_references; ++i) {        // Get the reference string
         fscanf(fp,"%d", &refs[i]);
     }
     fclose(fp);
-
+    
     for(i = 0; i < *no_of_frames; ++i) {
         frames[i].free = 1;                         // Indicates a free frame in memory
     }
@@ -54,10 +55,10 @@ void initilize (int *no_of_frames, int *no_of_references, int refs[], frameType 
 //-------------------- Prints the results of a reference,  all frames and their content and some info if page fault -----------------------------------
 
 void printResultOfReference (int no_of_frames, frameType frames[], int pf_flag, int mem_flag, int pos, int mem_frame, int ref) {
-
+    
     int j;
-
-    printf("Accessing page %d:\t", ref);
+    
+    printf("Acessing page %d:\t", ref);
 
     for(j = 0; j < no_of_frames; ++j) {             // Print out what pages are in memory, i.e. memory frames
         if (frames[j].free == 0) {                  // Page is in memory
@@ -67,7 +68,7 @@ void printResultOfReference (int no_of_frames, frameType frames[], int pf_flag, 
             printf("\t ");
         }
     }
-
+    
     if(pf_flag == 0) {                              // Page fault
         printf("\t\tPage fault");
     }
@@ -98,37 +99,28 @@ int findPageToEvict(frameType frames[], int n) {   // LRU eviction strategy -- T
     }
     else if(currentAlgoritm == FIFO)
     {
-
-        int i, first = frames[0].startTime, pos = 0;
+        int i, minimum = frames[0].startTime, pos = 0;
 
         for(i = 1; i < n; ++i) {
-            if (frames[i].startTime < first) {
-                first = frames[i].startTime;
+            if(frames[i].startTime < minimum){               // Find the page position with minimum start time stamp among all frames
+                minimum = frames[i].startTime;
                 pos = i;
             }
         }
         return pos; // Return that position
-
     }
-    else if(currentAlgoritm == LFU)     //least frequently used - släng ut sånt som använts få gånger
+    else if(currentAlgoritm == LFU)
     {
-        int i, leastUsed = frames[0].used, pos = 0;
 
-        for(i = 1; i < n; ++i) {
-            if (frames[i].used < leastUsed) {
-                leastUsed = frames[i].used;
-                pos = i;
-            }
-        }
-        return pos; // Return that position
     }
     else if(currentAlgoritm == OPT)
     {
 
-
-
     }
-
+    else
+    {
+        return (int)NULL;
+    }
 
 }
 
@@ -137,52 +129,49 @@ int main()
 {
     int no_of_frames, no_of_references, refs[100], counter = 0, page_fault_flag, no_free_mem_flag, i, j, pos = 0, faults = 0, free = 0;
     frameType frames[20];
-
+   
     initilize (&no_of_frames, &no_of_references, refs, frames); // Read no of frames, no of refs and ref string from file
-
-    for(i = 0; i < no_of_references; ++i){         // Loop over the ref string and check if refs[i] is in memory or not
+   
+    for(i = 0; i < no_of_references; ++i) {         // Loop over the ref string and check if refs[i] is in memory or not
         page_fault_flag = no_free_mem_flag = 0;     // If not, we have a page fault, and either have a free frame or evict a page
-
+    
         for(j = 0; j < no_of_frames; ++j) {         // Check if refs[i] is in memory
             if(frames[j].page == refs[i]) {         // Accessed ref is in memory
                 counter++;
-                frames[j].used=counter;
                 frames[j].time = counter;           // Update the time stamp for this frame
                 page_fault_flag = no_free_mem_flag = 1; // Indicate no page fault (no page fault and no free memory frame needed)
                 free = -1;                          // Indicate no free mem frame needed (reporting purposes)
                 break;
             }
         }
-
+        
         if(page_fault_flag == 0) {                   // We have a page fault
             for(j = 0; j < no_of_frames; ++j) {     // Loop over memory
                 if(frames[j].free == 1) {            // Do we have a free frame
                     counter++;
                     faults++;
-                    frames[j].used = counter;
-                    frames[j].startTime = counter;
-                    frames[j].page = refs[i];        // Update memory frame with referenced page
+                    frames[j].page= refs[i];        // Update memory frame with referenced page
                     frames[j].time = counter;       // Update the time stamp for this frame
                     frames[j].free = 0;             // This frame is no longer free
+                    frames[j].startTime = counter;  //Increments like time, but only when a frame is populated
                     no_free_mem_flag = 1;           // Indicate that we do not need to replace since free frame was found
                     free = j;                       // Inicate that we found position j as free (reporting purposes)
                     break;
                 }
             }
         }
-
+        
         if(no_free_mem_flag == 0) {                 // Page fault and memory is full, we need to know what page to evict
             pos = findPageToEvict(frames, no_of_frames); // Get memory position to evict among all frames
             counter++;
             faults++;
-            frames[pos].used= counter;
             frames[pos].page = refs[i];             // Update memory frame at position pos with referenced page
             frames[pos].time = counter;             // Update the time stamp for this frame
-            frames[pos].startTime = counter;
+            frames[pos].startTime = counter;        //Update the start time for this frame
         }
         printResultOfReference (no_of_frames, frames, page_fault_flag, no_free_mem_flag, pos, free, refs[i]); // Print result of referencing ref[i]
     }
     printf("\n\nTotal Page Faults = %d\n\n", faults);
-
+    
     return 0;
 }
